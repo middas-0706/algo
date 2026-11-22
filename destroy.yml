@@ -10,9 +10,13 @@
     - block:
         - name: Validate server_ip is provided
           assert:
-            that: server_ip is defined and server_ip | length > 0
+            that:
+              - server_ip is defined and server_ip is string and server_ip | length > 0
+              - server_ip is match('^[A-Za-z0-9_.:-]+$')
+              - server_ip not in ['.', '..']
             fail_msg: |
-              server_ip is required. Usage:
+              server_ip must name a single server directory, using an IP address or hostname.
+              Paths and parent-directory references are not allowed. Usage:
                 ./algo destroy <server-ip>
                 ansible-playbook destroy.yml -e "server_ip=YOUR_SERVER_IP"
 
@@ -53,7 +57,8 @@
               Check configs/{{ server_ip }}/.config.yml
 
         - name: Install cloud provider dependencies
-          shell: "uv pip install '.[{{ _provider_extras[algo_provider] | default(algo_provider) }}]'"
+          command:
+            argv: [uv, sync, --locked, --inexact, --extra, '{{ _provider_extras[algo_provider] }}']
           vars:
             _provider_extras:
               ec2: aws
@@ -64,7 +69,7 @@
               linode: linode
               openstack: openstack
               cloudstack: cloudstack
-          when: algo_provider != "local"
+          when: algo_provider in _provider_extras
           changed_when: false
 
         - name: Set region from stored config
@@ -73,6 +78,7 @@
           when:
             - region is not defined
             - _server_cfg.algo_region is defined
+            - _server_cfg.algo_region is string
             - _server_cfg.algo_region | length > 0
 
         - name: Validate region for providers that require it
@@ -92,10 +98,16 @@
             region: "unused"
           when:
             - region is not defined
-            - algo_provider not in ['ec2', 'lightsail', 'gce', 'scaleway', 'vultr']
+            - >-
+              algo_provider not in ['ec2', 'lightsail', 'gce', 'scaleway', 'vultr',
+                                    'azure', 'linode']
 
         - name: Gather provider credentials
-          include_tasks: "roles/cloud-{{ algo_provider }}/tasks/prompts.yml"
+          include_tasks:
+            file: "roles/cloud-{{ algo_provider }}/tasks/{{ provider_credentials_file }}.yml"
+          vars:
+            provider_credentials_file: >-
+              {{ 'auth' if algo_provider in ['azure', 'linode'] else 'prompts' }}
           when: algo_provider != "local"
 
         - name: Display destroy plan

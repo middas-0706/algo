@@ -8,11 +8,11 @@ Algo is an Ansible-based tool that sets up a personal VPN in the cloud. It's des
 - **Security-focused**: Creates hardened VPN servers with minimal attack surface
 - **Easy to use**: Automated deployment with sensible defaults
 - **Multi-platform**: Supports various cloud providers and operating systems
-- **Privacy-preserving**: No logging, minimal data retention
+- **Privacy-preserving**: Reduced logging and configurable retention
 
 ### Core Technologies
 - **VPN Protocols**: WireGuard (preferred) and IPsec/IKEv2
-- **Configuration Management**: Ansible (v12+)
+- **Configuration Management**: Ansible (v14)
 - **Languages**: Python, YAML, Shell, Jinja2 templates
 - **Supported Providers**: AWS, Azure, DigitalOcean, GCP, Vultr, Hetzner, local deployment
 
@@ -54,16 +54,15 @@ algo/
 
 ```bash
 # Run the full lint suite (same as CI)
-ansible-lint . && yamllint . && ruff check . && shellcheck scripts/*.sh && semgrep --config auto --exclude-rule dockerfile.security.last-user-is-root.last-user-is-root --error --quiet .
-ansible-playbook main.yml --syntax-check
-ansible-playbook users.yml --syntax-check
-pytest tests/unit/ -q
+uv sync --locked
+./scripts/lint.sh
+uv run --locked pytest -q
 ```
 
 Common lint issues to fix before submitting:
 - YAML files missing `---` document start markers
 - GitHub workflows with unquoted `on:` (must be `'on':`)
-- Using `ignore_errors: true` instead of `failed_when: false`
+- Suppressing unexpected task failures instead of handling them explicitly
 - Jinja2 spacing errors (`{{foo}}` should be `{{ foo }}`)
 - Missing `mode:` on file/directory tasks
 
@@ -97,15 +96,15 @@ When adding or modifying features, verify these before requesting review:
 
 | Tool | Target | Key Rules |
 |------|--------|-----------|
-| `ansible-lint` | YAML tasks | Use `failed_when` not `ignore_errors`, add `mode:` to files |
+| `ansible-lint` | YAML tasks | Handle expected failures explicitly, add `mode:` to files |
 | `yamllint` | All YAML | Document start `---`, quote `'on':` in workflows |
-| `ruff` | Python | Line length 120, target Python 3.11 |
+| `ruff` | Python | Line length 120, target Python 3.12 |
 | `shellcheck` | Shell scripts | Quote variables, use `set -euo pipefail` |
 | `semgrep` | All code | SAST scanner, `--config auto`, suppress with `# nosemgrep: rule-id` |
 
 ### Git Workflow
 
-1. Create feature branches from `master`
+1. Create feature branches from `main`
 2. Run all linters before pushing
 3. Make atomic commits with clear messages
 4. Update PR description with test results
@@ -153,18 +152,14 @@ ipsec_path: "configs/{{ server }}/ipsec/"
 ipsec_path: "configs/{{ server }}/ipsec"
 ```
 
-### ignore_errors vs failed_when
+### Expected command failures
 
 ```yaml
-# WRONG - ansible-lint failure
-- name: Clear history
-  command: some_command
-  ignore_errors: true
-
-# CORRECT - explicit about expected failures
-- name: Clear history
-  command: some_command
-  failed_when: false
+- name: Check whether a service is active
+  command: systemctl is-active example.service
+  register: service_check
+  changed_when: false
+  failed_when: service_check.rc not in [0, 3]
 ```
 
 ### changed_when on Read-Only Tasks
@@ -289,7 +284,7 @@ Ubuntu 22.04+ defaults to iptables-nft which reorders rules unpredictably. Algo 
 Servers with both public and private IPs on the same interface need explicit output interface for NAT:
 
 ```yaml
--o {{ ansible_default_ipv4['interface'] }}
+-o {{ ansible_facts['default_ipv4']['interface'] }}
 ```
 
 Don't overengineer with SNAT - MASQUERADE with interface specification works fine.
@@ -312,7 +307,8 @@ WireGuard configs must bracket IPv6 addresses:
 
 ### Jinja2 Templates
 
-Many templates use Ansible-specific filters. Test with `tests/unit/test_template_rendering.py` and mock Ansible filters when testing.
+Many templates use Ansible-specific filters and whitespace rules. Exercise production tasks
+through `tests/test_ansible_smoke.py`; use the real filters in smaller rendering tests.
 
 ## Time Wasters to Avoid
 
@@ -361,9 +357,9 @@ def test_regression_openssl_inline_comments():
 ### Local Development Setup
 
 ```bash
-uv sync
-uv run ansible-galaxy install -r requirements.yml
-ansible-playbook main.yml -e "provider=local"
+uv sync --locked
+uv run --locked prek install
+./algo --help
 ```
 
 ### Common Commands

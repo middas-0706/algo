@@ -21,6 +21,8 @@
     name: algovpn
     network: "{{ gcp_compute_network }}"
     direction: INGRESS
+    # This firewall is shared across Algo instances in the project.
+    # Keep both protocols until firewall ownership is scoped to individual deployments.
     allowed:
       - ip_protocol: udp
         ports:
@@ -70,7 +72,7 @@
             nat_ip: "{{ gcp_compute_address | default(None) }}"
             type: ONE_TO_ONE_NAT
     tags:
-      items:
+      tag_values:
         - environment-algo
   register: gcp_compute_instance
 

@@ -10,6 +10,12 @@
 - name: Privacy enhancements block
   when: privacy_enhancements_enabled | bool
   block:
+    - name: Check whether rsyslog is installed
+      stat:
+        path: /usr/sbin/rsyslogd
+      register: privacy_rsyslog
+      tags: [always]
+
     - name: Include log rotation tasks
       include_tasks: log_rotation.yml
       tags: privacy-logs
@@ -18,8 +24,30 @@
       include_tasks: clear_history.yml
       tags: privacy-history
 
+    - name: Create rsyslog privacy configuration directory
+      file:
+        path: /etc/rsyslog.d
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+      when: privacy_rsyslog.stat.exists
+      tags: [privacy-filtering, privacy-advanced]
+
+    - name: Configure rsyslog for minimal logging
+      template:
+        src: privacy-rsyslog.conf.j2
+        dest: /etc/rsyslog.d/45-privacy-minimal.conf
+        mode: '0644'
+        owner: root
+        group: root
+      notify: restart rsyslog
+      when: privacy_rsyslog.stat.exists
+      tags: [privacy-filtering, privacy-advanced]
+
     - name: Include log filtering tasks
       include_tasks: log_filtering.yml
+      when: privacy_rsyslog.stat.exists
       tags: privacy-filtering
 
     - name: Include automatic cleanup tasks

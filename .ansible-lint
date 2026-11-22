@@ -1,12 +1,13 @@
 # Ansible-lint configuration
+# requirements.yml pins provider APIs separately from Ansible's bundled collections.
+# ansible-compat may report both versions; the pinned copy takes precedence.
+# Keep these overrides until each provider's newer API has been tested.
 exclude_paths:
   - .cache/
   - .github/
   - tests/
   - files/cloud-init/  # Cloud-init files have special format requirements
   - playbooks/  # These are task files included by other playbooks, not standalone playbooks
-  - roles/cloud-ec2/files/  # AWS CloudFormation templates use YAML tags ansible-lint can't parse
-  - roles/cloud-lightsail/files/  # AWS CloudFormation templates use YAML tags ansible-lint can't parse
 
 skip_list:
   - 'package-latest'  # Package installs should not use latest - needed for updates
@@ -42,6 +43,5 @@ mock_modules:
   - gcp_compute_location_info
   - lightsail_region_facts
   - x25519_pubkey
-  - scaleway_compute
 
 # vim: ft=yaml

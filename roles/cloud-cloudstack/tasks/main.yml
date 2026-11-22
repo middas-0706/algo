@@ -16,18 +16,25 @@
           endif -%}
 
     - name: Security group created
-      cs_securitygroup:
+      ngine_io.cloudstack.security_group:
         name: "{{ algo_server_name }}-security_group"
         description: AlgoVPN security group
       register: cs_security_group
 
     - name: Security rules created
-      cs_securitygroup_rule:
+      ngine_io.cloudstack.security_group_rule:
+        state: >-
+          {{ 'present'
+             if item.proto != 'udp' or item.start_port | int in vpn_ports else 'absent' }}
         security_group: "{{ cs_security_group.name }}"
         protocol: "{{ item.proto }}"
         start_port: "{{ item.start_port }}"
         end_port: "{{ item.end_port }}"
         cidr: "{{ item.range }}"
+      vars:
+        vpn_ports: >-
+          {{ ([wireguard_port | int] if wireguard_enabled | bool else []) +
+             ([500, 4500] if ipsec_enabled | bool else []) }}
       loop:
         - { proto: tcp, start_port: "{{ ssh_port }}", end_port: "{{ ssh_port }}", range: 0.0.0.0/0 }
         - { proto: udp, start_port: 4500, end_port: 4500, range: 0.0.0.0/0 }
@@ -41,7 +48,7 @@
         disk: "{{ cloud_providers.cloudstack.disk }}"
 
     - name: Server created
-      cs_instance:
+      ngine_io.cloudstack.instance:
         name: "{{ algo_server_name }}"
         root_disk_size: "{{ disk }}"
         template: "{{ image_id }}"

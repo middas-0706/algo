@@ -46,7 +46,7 @@ Look here if you have a problem running the installer to set up a new Algo serve
 
 ### Python version is not supported
 
-The minimum Python version required to run Algo is 3.11. Most modern operation systems should have it by default, but if the OS you are using doesn't meet the requirements, you have to upgrade. See the official documentation for your OS, or manual download it from https://www.python.org/downloads/. Otherwise, you may [deploy from docker](deploy-from-docker.md)
+The minimum Python version required to run Algo is 3.12. Most modern operation systems should have it by default, but if the OS you are using doesn't meet the requirements, you have to upgrade. See the official documentation for your OS, or manual download it from https://www.python.org/downloads/. Otherwise, you may [deploy from docker](deploy-from-docker.md)
 
 ### Error: "ansible-playbook: command not found"
 
@@ -220,7 +220,7 @@ You tried to run Algo and you received an error like this one:
 ```
 TASK [Create a symlink if deploying to localhost] ********************************************************************
 fatal: [localhost]: FAILED! => {"changed": false, "gid": 1000, "group": "ubuntu", "mode": "0775", "msg": "the directory configs/localhost is not empty, refusing to convert it", "owner": "ubuntu", "path": "configs/localhost", "size": 4096, "state": "directory", "uid": 1000}
-included: /home/ubuntu/algo-master/playbooks/rescue.yml for localhost
+included: /home/ubuntu/algo-main/playbooks/rescue.yml for localhost
 
 TASK [debug] *********************************************************************************************************
 ok: [localhost] => {

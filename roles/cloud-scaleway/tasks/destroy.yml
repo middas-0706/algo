@@ -1,9 +1,16 @@
 ---
+- name: Load Scaleway zones for standalone destruction
+  include_vars: "{{ playbook_dir }}/roles/cloud-scaleway/defaults/main.yml"
+
+- name: Determine the Scaleway zone
+  set_fact:
+    algo_scaleway_zone: "{{ scaleway_zone_map.get(algo_region, algo_region) }}"
+
 - environment:
     SCW_TOKEN: "{{ algo_scaleway_token }}"
   block:
     - name: Destroy Scaleway server
-      scaleway_compute:
+      scaleway_instance:
         name: "{{ algo_server_name }}"
         state: absent
-        region: "{{ algo_region }}"
+        zone: "{{ algo_scaleway_zone }}"
